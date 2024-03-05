@@ -1,7 +1,8 @@
 import json
 
-from scrapy import Request, Spider
+from scrapy import Spider
 from scrapy.crawler import CrawlerProcess
+from scrapy.http import Request
 
 from foodpanda_parser import FoodPandaParser
 
@@ -12,15 +13,16 @@ class FoodPandaCrawlSpider(Spider):
     
     def parse(self, response):
         css = "script:contains(ItemList)::text"
-        raw_restaurants = json.loads(response.css(css).get())["itemListElement"]
-        raw_restaurants = [restaurant['item']['url'] for restaurant in raw_restaurants]
+        raw_restaurants = response.css(css).get()
 
-        yield from [response.follow(url, self.parser.parse) for url in raw_restaurants]
-        yield from self.parse_pagination(response)
+        if not raw_restaurants:
+            return []
         
-    def parse_pagination(self, response):
-        return []
-
+        raw_restaurants = json.loads(raw_restaurants)["itemListElement"]
+        raw_restaurants = [restaurant['item']['url'] for restaurant in raw_restaurants]
+        
+        yield from [Request(url, self.parser.parse) for url in raw_restaurants]
+        
 
 if __name__ == '__main__':
     pipelines = {
@@ -32,7 +34,6 @@ if __name__ == '__main__':
     process = CrawlerProcess(settings={
         "DOWNLOAD_DELAY": 10,
         "CONCURRENT_REQUESTS": 1,
-        "HTTPERROR_ALLOWED_CODES": [403],
         "ITEM_PIPELINES": pipelines,
         "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML," \
                       " like Gecko) Chrome/121.0.0.0 Safari/537.36",

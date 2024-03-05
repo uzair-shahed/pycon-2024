@@ -10,9 +10,10 @@ class Review(Item):
     name = Field()
     content = Field()
     date = Field()
-    restaraunt = Field()
+    restaurant_name = Field()
+    restaraunt_id = Field()
 
-    overall_rating = Field()
+    customer_rating = Field()
     worst_rating = Field()
     best_rating = Field()
     
@@ -22,32 +23,37 @@ class Review(Item):
 class FoodPandaParser(Spider):
     name = "foodpanda-spider"
     parse_url = "https://www.foodpanda.pk/restaurant/q3tt/subway-dha-eme"
-    review_api_url = "https://reviews-api-pk.fd-api.com/reviews/vendor/{restaraunt_code}"
+    review_api_url = "https://reviews-api-pk.fd-api.com/reviews/vendor/{restaurant_id}"
     review_api_params = {
         "global_entity_id": "FP_PK",
         "limit": "30",
     }
-    headers = {
-        "user-agent": "Postman"
-    }
 
     def parse(self, response):
-        restaraunt_code = re.findall(r"\/restaurant\/(.*?)\/", response.url)[0]
-        review_api_url = self.review_api_url.format(restaraunt_code=restaraunt_code)
+        if not (name_raw := response.css('[type="application/ld+json"] ::text').get()):
+            return []
+        
+        restaurant_id = re.findall(r"\/restaurant\/(.*?)\/", response.url)[0]
+        review_api_url = self.review_api_url.format(restaurant_id=restaurant_id)
         review_api_url = add_or_replace_parameters(review_api_url, self.review_api_params)
         
-        return [Request(review_api_url, self.parse_reviews, headers=self.headers)]
+        review = Review()
+        review['restaurant_name'] = json.loads(name_raw)['name']
+        review['restaurant_id'] = restaurant_id
+
+        return [Request(review_api_url, self.parse_reviews, meta={'review': review})]
 
     def parse_reviews(self, response):
         review_data = json.loads(response.text)['data']
+        review = response.meta['review']
 
         for data in review_data:
-            review = Review()
+            review = review.copy()
             review['id'] = data['uuid']
             review['name'] = data['reviewerName']
             review['content'] = data['text']
             review['date'] = data['createdAt']
-            review['overall_rating'] = [x['score'] for x in data['ratings'] if x['topic'] == 'overall'][0]
+            review['customer_rating'] = [x['score'] for x in data['ratings'] if x['topic'] == 'overall'][0]
             review['worst_rating'] = 1
             review['best_rating'] = 5
             yield review
@@ -62,32 +68,6 @@ class FoodPandaParser(Spider):
             return [Request(review_api_url, self.parse_reviews)]
         
         return []
-
-
-
-    
-
-# class TokenizationPipeline:
-#     def process_item(self, review, spider):
-#         review['tokens'] = nltk.word_tokenize(review['content'])
-#         return review
-    
-
-
-
-
-# class RemoveStopWordsPipeline:
-#     def process_item(self, review, spider):
-#         stop_words = set(stopwords.words('english'))
-#         review['tokens'] = [word for word in review['tokens'] if word.lower() not in stop_words]
-#         return review
-
-
-# class LemmatizationPipeline:
-#     def process_item(self, review, spider):
-#         lemmatizer = WordNetLemmatizer()
-#         review['tokens'] = [lemmatizer.lemmatize(word) for word in review['tokens']]
-#         return review
 
 
 def clean(list_of_text):
