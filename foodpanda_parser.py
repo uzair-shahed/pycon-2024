@@ -70,14 +70,3 @@ class FoodPandaParser(Spider):
         return []
 
 
-def clean(list_of_text):
-
-    if not isinstance(list_of_text, list):
-        raise ValueError(f"The clean() method only accepts lists")
-    
-    list_of_text = [text.replace('\n', '') for text in list_of_text]
-    list_of_text = [text.replace('  ', ' ') for text in list_of_text]
-    
-    return list_of_text
-
-

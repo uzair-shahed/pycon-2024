@@ -25,18 +25,16 @@ class FoodPandaCrawlSpider(Spider):
         
 
 if __name__ == '__main__':
-    pipelines = {
+    process = CrawlerProcess(settings={
+        "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML," \
+                      " like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "DOWNLOAD_DELAY": 10,
+        "CONCURRENT_REQUESTS": 1,
+        "ITEM_PIPELINES": {
         "pipelines.LowerCasePipeline": 1,
         "pipelines.RemovePunctuationPipeline": 2,
         "pipelines.StripStringPipeline": 3,
-    }
-
-    process = CrawlerProcess(settings={
-        "DOWNLOAD_DELAY": 10,
-        "CONCURRENT_REQUESTS": 1,
-        "ITEM_PIPELINES": pipelines,
-        "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML," \
-                      " like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    },
     })
     process.crawl(FoodPandaCrawlSpider)
     process.start()
